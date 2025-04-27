@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>仪表盘 - 云短信平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .card-title {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 10px !important;
+            background-color: #f8f9fa;
+        }
+        .list-group-item:hover {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background-color: #3498db;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        .btn-outline-secondary {
+            border-radius: 25px;
+        }
+        .pagination .page-link {
+            border: none;
+            border-radius: 25px;
+            margin: 0 3px;
+            color: #3498db;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #3498db;
+            color: white;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        code {
+            color: #e74c3c;
+        }
+        .input-group {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .input-group .form-control {
+            border-radius: 25px 0 0 25px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 0.75rem 1.5rem;
+        }
+        .input-group .btn {
+            border-radius: 0 25px 25px 0;
+        }
+        h1 {
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+        .text-muted {
+            color: #7f8c8d !important;
+        }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="header-container">
+            <h1>欢迎回来，{{ username }}！</h1>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">退出登录</a>
+        </div>
+        
+        <!-- API密钥卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">API密钥</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">您的API密钥：</p>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" value="{{ api_key }}" id="apiKey" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()">复制</button>
+                </div>
+                <p class="text-muted small">请妥善保管您的API密钥，不要泄露给他人。</p>
+            </div>
+        </div>
+
+        <!-- API使用说明 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">API使用说明</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>请求地址：</strong><code>/api/send?X-API-Key={{ api_key }}</code></p>
+                <p><strong>请求方法：</strong><code>POST</code></p>
+                <p><strong>请求体：</strong></p>
+                <pre><code>{
+    "content": "短信内容"
+}</code></pre>
+                <p><strong>注意事项：</strong></p>
+                <ul>
+                    <li>短信内容长度限制为500字符</li>
+                    <li>发送频率限制：1分钟内最多10条</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 短信列表 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">最新短信</h5>
+            </div>
+            <div class="card-body">
+                {% if messages.items %}
+                    <div class="list-group">
+                        {% for message in messages.items %}
+                            <div class="list-group-item" onclick="showMessage('{{ message.content }}')" style="cursor: pointer;">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">ID: {{ message.id }}</h6>
+                                    <small class="message-time" data-timestamp="{{ message.id.split('_')[0] }}"></small>
+                                </div>
+                                <p class="mb-1 text-truncate">{{ message.content }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- 分页导航 -->
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if messages.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dashboard', page=messages.prev_num) }}">上一页</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">上一页</span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in messages.iter_pages() %}
+                                {% if page_num %}
+                                    <li class="page-item {% if page_num == messages.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('dashboard', page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if messages.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dashboard', page=messages.next_num) }}">下一页</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">下一页</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% else %}
+                    <p class="text-center text-muted">暂无短信记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyApiKey() {
+            var copyText = document.getElementById("apiKey");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            alert("API密钥已复制到剪贴板");
+        }
+
+        // 转换时间戳为北京时间
+        function formatTimestamp(timestamp) {
+            const date = new Date(parseInt(timestamp));
+            const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Shanghai'
+            };
+            return date.toLocaleString('zh-CN', options);
+        }
+
+        // 为所有时间元素设置格式化后的时间
+        document.querySelectorAll('.message-time').forEach(element => {
+            const timestamp = element.getAttribute('data-timestamp');
+            element.textContent = formatTimestamp(timestamp);
+        });
+
+        // 显示短信内容的函数
+        function showMessage(content) {
+            alert(content);
+        }
+    </script>
+</body>
+</html> 
