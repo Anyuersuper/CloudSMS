@@ -30,7 +30,7 @@ def login_required(f):
 
 # 用户模型
 class User(db.Model):
-    __tablename__ = 'users'  # 明确指定表名
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
@@ -42,8 +42,8 @@ class User(db.Model):
 
 # 短信模型
 class Message(db.Model):
-    __tablename__ = 'messages'  # 明确指定表名
-    id = db.Column(db.String(64), primary_key=True)  # 使用字符串作为主键
+    __tablename__ = 'messages'
+    id = db.Column(db.String(64), primary_key=True)
     username = db.Column(db.String(80), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -54,7 +54,6 @@ def init_db():
         db.create_all()
         print("数据库表已创建")
 
-# 调用初始化函数
 init_db()
 
 def hash_password(password, salt):
@@ -64,37 +63,32 @@ def generate_api_key():
     return secrets.token_hex(32)
 
 def generate_message_id():
-    # 生成时间戳（毫秒级）
     timestamp = int(time.time() * 1000)
-    # 生成UUID并只取前6位
     unique_id = str(uuid.uuid4()).replace('-', '')[:6]
-    # 组合时间戳和UUID
     return f"{timestamp}_{unique_id}"
 
-
-
+# ----------------------
+# 所有路由以 /cloudsms/ 开头
+# ----------------------
 
 @app.route('/cloudsms/')
 def index():
     if 'username' in session:
-        return redirect(url_for('/cloudsms/dashboard'))
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-@app.route('/cloudsms/dashboard')
+@app.route('/cloudsms/dashboard/')
 @login_required
 def dashboard():
-    # 获取当前用户
     user = User.query.filter_by(username=session['username']).first()
     
-    # 获取分页参数
     page = request.args.get('page', 1, type=int)
-    per_page = 10  # 每页显示10条
-    
-    # 获取用户的短信，按时间倒序排列
+    per_page = 10
+
     messages = Message.query.filter_by(username=user.username)\
         .order_by(Message.created_at.desc())\
         .paginate(page=page, per_page=per_page, error_out=False)
-    
+
     # 转换时间为北京时间
     for message in messages.items:
         if message.created_at.tzinfo is None:
@@ -119,8 +113,8 @@ def register():
             
         salt = secrets.token_hex(16)
         hashed_password = hash_password(password, salt)
-        api_key = generate_api_key()  # 生成API密钥
-        
+        api_key = generate_api_key()
+
         new_user = User(username=username, password=hashed_password, salt=salt, api_key=api_key)
         db.session.add(new_user)
         db.session.commit()
@@ -145,7 +139,7 @@ def login():
     
     return render_template('index.html')
 
-@app.route('/cloudsms/logout')
+@app.route('/cloudsms/logout/')
 def logout():
     session.pop('username', None)
     flash('您已成功退出登录', 'info')
@@ -154,26 +148,21 @@ def logout():
 # API接口
 @app.route('/cloudsms/api/send', methods=['POST'])
 def api_send():
-    # 从URL参数获取API密钥
     api_key = request.args.get('X-API-Key')
     if not api_key:
         return jsonify({'error': '缺少API密钥'}), 401
     
-    # 验证API密钥
     user = User.query.filter_by(api_key=api_key).first()
     if not user:
         return jsonify({'error': '无效的API密钥'}), 401
     
-    # 获取短信内容
     data = request.get_json()
     if not data or 'content' not in data:
         return jsonify({'error': '缺少短信内容'}), 400
     
-    # 检查内容长度
-    if len(data['content']) > 500:  # 限制短信长度
+    if len(data['content']) > 500:
         return jsonify({'error': '短信内容过长'}), 400
-    
-    # 检查请求频率
+
     recent_messages = Message.query.filter_by(username=user.username)\
         .order_by(Message.created_at.desc())\
         .limit(10)\
@@ -182,10 +171,9 @@ def api_send():
     if recent_messages and len(recent_messages) >= 10:
         last_message_time = recent_messages[-1].created_at
         time_diff = datetime.now() - last_message_time
-        if time_diff.total_seconds() < 60:  # 限制1分钟内最多10条
+        if time_diff.total_seconds() < 60:
             return jsonify({'error': '发送频率过高，请稍后再试'}), 429
     
-    # 创建新短信
     message_id = generate_message_id()
     new_message = Message(id=message_id, username=user.username, content=data['content'])
     db.session.add(new_message)
@@ -198,4 +186,4 @@ def api_send():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True,port=9839) 
+    app.run(debug=True, port=9839)
