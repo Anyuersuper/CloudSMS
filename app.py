@@ -74,13 +74,13 @@ def generate_message_id():
 
 
 
-@app.route('/')
+@app.route('/cloudsms/')
 def index():
     if 'username' in session:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('/cloudsms/dashboard'))
     return render_template('index.html')
 
-@app.route('/dashboard')
+@app.route('/cloudsms/dashboard')
 @login_required
 def dashboard():
     # 获取当前用户
@@ -107,7 +107,7 @@ def dashboard():
                          api_key=user.api_key,
                          messages=messages)
 
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/cloudsms/register/', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
@@ -129,7 +129,7 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/cloudsms/login/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -145,14 +145,14 @@ def login():
     
     return render_template('index.html')
 
-@app.route('/logout')
+@app.route('/cloudsms/logout')
 def logout():
     session.pop('username', None)
     flash('您已成功退出登录', 'info')
     return redirect(url_for('index'))
 
 # API接口
-@app.route('/api/send', methods=['POST'])
+@app.route('/cloudsms/api/send', methods=['POST'])
 def api_send():
     # 从URL参数获取API密钥
     api_key = request.args.get('X-API-Key')
