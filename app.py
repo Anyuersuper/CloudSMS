@@ -186,4 +186,4 @@ def api_send():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=9839)
+    app.run("0.0.0.0", port=9839)
